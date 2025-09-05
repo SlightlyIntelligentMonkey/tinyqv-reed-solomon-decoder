@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2025 Your Name
+ * Copyright (c) 2025 Dawson Hubbard
  * SPDX-License-Identifier: Apache-2.0
  */
 
 `default_nettype none
 
-// Change the name of this module to something that reflects its functionality and includes your name for uniqueness
-// For example tqvp_yourname_spi for an SPI peripheral.
-// Then edit tt_wrapper.v line 41 and change tqvp_example to your chosen module name.
-module tqvp_example (
+module tqvp_reed_solomon_decoder (
     input         clk,          // Clock - the TinyQV project clock is normally set to 64MHz.
     input         rst_n,        // Reset_n - low to reset.
 
@@ -30,57 +27,114 @@ module tqvp_example (
 
     output        user_interrupt  // Dedicated interrupt request for this peripheral
 );
+    reg [7:0] block_length;
+    reg [7:0] message_length;
+    reg [7:0] code_length;
 
-    // Implement a 32-bit read/write register at address 0
-    reg [31:0] example_data;
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            example_data <= 0;
-        end else begin
-            if (address == 6'h0) begin
-                if (data_write_n != 2'b11)              example_data[7:0]   <= data_in[7:0];
-                if (data_write_n[1] != data_write_n[0]) example_data[15:8]  <= data_in[15:8];
-                if (data_write_n == 2'b10)              example_data[31:16] <= data_in[31:16];
-            end
-        end
-    end
+    reg [7:0] generator_polynomial;
+    reg [8:0] irreducible_polynomial;
+    reg [6:0] reduction_matrix [7:0];
+    reg [7:0] first_root;
 
-    // The bottom 8 bits of the stored data are added to ui_in and output to uo_out.
-    assign uo_out = example_data[7:0] + ui_in;
+    reg [7:0] accum;
 
-    // Address 0 reads the example data register.  
-    // Address 4 reads ui_in
-    // All other addresses read 0.
-    assign data_out = (address == 6'h0) ? example_data :
-                      (address == 6'h4) ? {24'h0, ui_in} :
-                      32'h0;
+    //32 bit words addressed with address range 0 - 63
+    reg [7:0] message_data [0:255];
+    reg [7:0] decoded_data [0:255];
 
-    // All reads complete in 1 clock
-    assign data_ready = 1;
+    //decode reed solomon code
+    localparam MAX_CODE_LENGTH = 32;
+    reg [7:0] syndromes [0:MAX_CODE_LENGTH];
+    reg [7:0] located_data [0:255];
+    reg [7:0] corrected_data [0:255];
+
+    wire syndrome_done;
+    wire berlekamp_massey_done;
+    wire root_search_done;
+    wire forney_algorithm_done;
+
+    wire syndrome_rst;
+    wire berlekamp_massey_rst;
+    wire root_search_rst;
+    wire forney_algorithm_rst;
+
+    wire [7:0] calculated_syndromes [0:MAX_CODE_LENGTH]
+    serial_syndrome_calculator #(MAX_CODE_LENGTH = MAX_CODE_LENGTH)
+        syndrome_calculator(clk, syndrome_rst, generator_polynomial, message_data, reduction_matrix,
+        syndrome_done, calculated_syndromes);
+
+    wire [7:0] berlekamp_massey_code_length;
+    wire [7:0] berlekamp_massey_error_locator [0:MAX_CODE_LENGTH/2];
+    wire [7:0] berlekamp_massey_error_evaluator [0:MAX_CODE_LENGTH/2];
+    serial_berlekamp_massey #(MAX_CODE_LENGTH = MAX_CODE_LENGTH)
+        berlekamp_massey(clk, berlekamp_massey_rst, berlekamp_massey_code_length, syndromes, reduction_matrix,
+                         berlekamp_massey_done, berlekamp_massey_error_locator, berlekamp_massey_error_evaluator);
     
-    // User interrupt is generated on rising edge of ui_in[6], and cleared by writing a 1 to the low bit of address 8.
-    reg example_interrupt;
-    reg last_ui_in_6;
+    wire [7:0] root_search_error_locator [0:MAX_CODE_LENGTH/2];
+    wire [7:0] root_search_roots [0:MAX_CODE_LENGTH];
+    fast_root_search #(MAX_CODE_LENGTH = MAX_CODE_LENGTH)
+        root_search(clk, root_search_rst, generator_polynomial, root_search_error_locator, reduction_matrix,
+                    root_search_done, root_search_roots);
+
+    wire [7:0] forney_error_locator_derivative [0:MAX_CODE_LENGTH];
+    wire [7:0] forney_error_evaluator [0:MAX_CODE_LENGTH];
+    forney_algorithm #(MAX_CODE_LENGTH = MAX_CODE_LENGTH)
+        forney(clk, forney_algorithm_rst, first_root, forney_error_locator_derivative, forney_error_evaluator, reduction_matrix,
+               forney_algorithm_done, corrected_data);
 
     always @(posedge clk) begin
-        if (!rst_n) begin
-            example_interrupt <= 0;
+
+        if (data_write_n == b10 and ui_in[0] == 0) begin
+            message_data[(address << 2) + 0] = data_in[0:7];
+            message_data[(address << 2) + 1] = data_in[7:15];
+            message_data[(address << 2) + 2] = data_in[15:23];
+            message_data[(address << 2) + 3] = data_in[23:31];
+        end
+        if (data_write_n != b11 and address == 0 and ui_in[0] == 1) begin
+            block_length = data_in[0:7];
+            code_length = block_length - message_length;
+        end
+        if (data_write_n != b11 and address == 1 and ui_in[0] == 1) begin
+            message_length = data_in[0:7];
+            code_length = block_length - message_length;
+        end
+        if (data_write_n != b11 and address == 2 and ui_in[0] == 1) begin
+            generator_polynomial = data_in[0:7];
+        end
+        if (data_write_n == b01 and address == 3 and ui_in[0] == 1) begin
+            irreducible_polynomial = data_in[0:8];
+            //calculate reduction matrix
+        end
+        if (data_write_n != b11 and address == 4 and ui_in[0] == 1) begin
+            first_root = data_in[0:7];
         end
 
-        if (ui_in[6] && !last_ui_in_6) begin
-            example_interrupt <= 1;
-        end else if (address == 6'h8 && data_write_n != 2'b11 && data_in[0]) begin
-            example_interrupt <= 0;
+        if (data_read_n == b11)
+            data_ready = 0;
+        if(data_read_n == b10) begin
+            data_out[0:7]   = decoded_data[(address << 2) + 0];
+            data_out[7:15]  = decoded_data[(address << 2) + 1];
+            data_out[15:23] = decoded_data[(address << 2) + 2];
+            data_out[23:31] = decoded_data[(address << 2) + 3];
+            data_ready = 1;
         end
 
-        last_ui_in_6 <= ui_in[6];
+        syndrome_rst <= 0;
+        berlekamp_massey_rst <= 0;
+        root_search_rst <= 0;
+        forney_algorithm_rst <= 0;
+
+        //go to next pipeline stage
+        if (syndrome_done == 1 and berlekamp_massey_done == 1 and root_search_done == 1 and forney_algorithm_done == 1) begin
+            decoded_data <= corrected_data;
+            corrected_data <= located_data;
+            located_data <= message_data;
+            syndromes <= calculated_syndromes;
+
+            syndrome_rst <= 1;
+            berlekamp_massey_rst <= 1;
+            root_search_rst <= 1;
+            forney_algorithm_rst <= 1;
+        end
     end
-
-    assign user_interrupt = example_interrupt;
-
-    // List all unused inputs to prevent warnings
-    // data_read_n is unused as none of our behaviour depends on whether
-    // registers are being read.
-    wire _unused = &{data_read_n, 1'b0};
-
 endmodule

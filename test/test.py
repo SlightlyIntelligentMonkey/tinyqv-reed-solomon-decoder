@@ -12,6 +12,11 @@ from tqv import TinyQV
 # The peripheral number is not used by the test harness.
 PERIPHERAL_NUM = 0
 
+#accepts array of 32 bit words, length is in bytes
+def write_encoded_message(tqv, data, length):
+    for i in range(0, length/4):
+        tqv.write_word_reg(i, data[i])
+
 @cocotb.test()
 async def test_project(dut):
     dut._log.info("Start")
@@ -31,6 +36,22 @@ async def test_project(dut):
     await tqv.reset()
 
     dut._log.info("Test project behavior")
+
+    #primitive polynomial: ccsds 0b110000111
+    #primitive polynomials: 0b100101011 0b101011111 0b111110101
+
+    #ccsds parameters
+    #tqv.dut.
+    tqv.write_byte_reg(0, 255)
+    tqv.write_byte_reg(1, 223)
+    tqv.write_byte_reg(2, 0xE8)
+    tqv.write_hword_reg(3, 0b110000111)
+    tqv.write_byte_reg(4, 0x79)
+
+    #reed solomon parameters used in voyager
+    #tqv.write_byte_reg(0, 255)
+    #tqv.write_byte_reg(1, 223)
+    #tqv.write_hword_reg(2, 0b100011101)
 
     # Test register write and read back
     await tqv.write_word_reg(0, 0x82345678)
