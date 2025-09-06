@@ -13,25 +13,23 @@ module finite_field_multiplier_mastravito (input [7:0] a, input [7:0] b, input [
     wire [7:0] c_part [0:7];
 
     //multiplication
-    genvar i;
-    genvar j;
     generate
-        for (i = 0; i < 15; i = i + 1) begin : multiplication
-            for (j = 0; j < 8; j = j + 1) begin
+        for (genvar i = 0; i < 15; i = i + 1) begin : multiplication
+            for (genvar j = 0; j < 8; j = j + 1) begin
                 if (i - j > 0 && i - j < 8)
                     assign d_part[i][j] = a[i - j] & b[j];
                 else
                     assign d_part[i][j] = 0;
             end
-            assign d[j] = ^d_part[j];
+            assign d[i] = ^d_part[i];
         end
 
         //reduction
-        for (j = 0; j < 8; j = j + 1) begin : reduction_init
+        for (genvar j = 0; j < 8; j = j + 1) begin : reduction_init
             assign c_part[j][0] = d[j];
         end
-        for (j = 0; j < 8; j = j + 1) begin : reduction
-            for (i = 0; i < 7; i = i + 1) begin
+        for (genvar j = 0; j < 8; j = j + 1) begin : reduction
+            for (genvar i = 0; i < 7; i = i + 1) begin
                 assign c_part[j][i+1] = d[i+8] & q[j][i];
             end
             assign c[j] = ^c_part[j];
@@ -78,8 +76,8 @@ module binary_exponentiation (input clk, input rst, input [7:0] element, input [
     assign data_ready = (exponent == 0) ? 1 : 0;
     always @(posedge rst) begin
         exponent = power;
-        base = element;
-        result = 1;
+        base <= element;
+        result <= 1;
     end
     reg square_not_calc;
     always @(posedge clk) begin
@@ -119,8 +117,8 @@ module polynomial_evaluator #(parameter DEGREE = 256)
     assign data_ready = (i == ~0) ? 1 : 0;
 
     always @(posedge rst) begin
-        i = DEGREE - 1;
-        result = 0;
+        i <= DEGREE - 1;
+        result <= 0;
     end
 
     reg [7:0] mul_result;
@@ -134,11 +132,11 @@ module polynomial_evaluator #(parameter DEGREE = 256)
     end
 endmodule
 
-module serial_syndrome_calculator #(parameter DEGREE = 256, parameter MAX_CODE_LENGTH = 32)
+module serial_syndrome_calculator #(parameter DEGREE = 256, parameter MAX_ERRORS = 16)
                             (input clk, input rst, input [7:0] generator_polynomial, input [7:0] coeff [0:DEGREE-1],
                              input [6:0] reduction_matrix [0:7],
-                             output wire done, output reg [7:0] syndromes [0:MAX_CODE_LENGTH-1]);
-    localparam COUNTERWIDTH = $clog2(MAX_CODE_LENGTH);
+                             output wire done, output reg [7:0] syndromes [0:(MAX_ERRORS*2)-1]);
+    localparam COUNTERWIDTH = $clog2(2*MAX_ERRORS);
     reg evaluator_rst;
     reg [7:0] evaluator_x;
     wire evaluator_done;
@@ -152,15 +150,15 @@ module serial_syndrome_calculator #(parameter DEGREE = 256, parameter MAX_CODE_L
 
     reg [COUNTERWIDTH:0] counter;
     reg [7:0] alpha;
-    assign done = (counter == MAX_CODE_LENGTH) ? 1 : 0;
+    assign done = (counter == MAX_ERRORS) ? 1 : 0;
     always @(posedge rst) begin
-        counter = 0;
-        alpha = generator_polynomial;
+        counter <= 0;
+        alpha <= generator_polynomial;
     end
     always @(posedge clk) begin
         evaluator_rst = 0;
 
-        if (evaluator_done == 1 && counter != MAX_CODE_LENGTH) begin
+        if (evaluator_done == 1 && counter != MAX_ERRORS) begin
             mul_alpha <= alpha;
 
             syndromes[counter[COUNTERWIDTH-1:0]] <= evaluator_result;
@@ -177,13 +175,13 @@ module serial_syndrome_calculator #(parameter DEGREE = 256, parameter MAX_CODE_L
 endmodule
 
 //implementation of https://doi.org/10.1109/26.764911
-module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
-                                (input clk, input rst, input [$clog2(MAX_CODE_LENGTH)-1:0] code_length,
-                                 input [7:0] syndrome [0:MAX_CODE_LENGTH-1], input [6:0] reduction_matrix [0:7],
+module serial_berlekamp_massey #(parameter MAX_ERRORS = 16)
+                                (input clk, input rst, input [$clog2(2*MAX_ERRORS)-1:0] code_length,
+                                 input [7:0] syndrome [0:(MAX_ERRORS*2)-1], input [6:0] reduction_matrix [0:7],
                                  output data_ready,
-                                 output wire [7:0] out_error_locator [0:MAX_CODE_LENGTH-1/2],
-                                 output wire [7:0] out_error_evaluator [0:MAX_CODE_LENGTH-1/2]);
-    localparam BITWIDTH = $clog2(MAX_CODE_LENGTH);
+                                 output wire [7:0] out_error_locator [0:MAX_ERRORS-1],
+                                 output wire [7:0] out_error_evaluator [0:MAX_ERRORS-1]);
+    localparam BITWIDTH = $clog2(2*MAX_ERRORS);
     reg [BITWIDTH-1:0] i;
     reg [BITWIDTH-1:0] j;
     reg error_locator_done;
@@ -195,11 +193,11 @@ module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
     reg [7:0] delta;
 
     //1 is the current iteration 0 is the previous iteration
-    reg [7:0] auxillary_polynomial [0:MAX_CODE_LENGTH-1][0:1];
-    reg [7:0] error_locator [0:MAX_CODE_LENGTH-1][0:1];
-    reg [7:0] error_evaluator [0:MAX_CODE_LENGTH-1];
+    reg [7:0] auxillary_polynomial [0:MAX_ERRORS-1];//[0:1];
+    reg [7:0] error_locator [0:1][0:MAX_ERRORS-1];
+    reg [7:0] error_evaluator [0:MAX_ERRORS-1];
 
-    assign out_error_locator = error_locator[0:MAX_CODE_LENGTH-1][1];
+    assign out_error_locator = error_locator[1];
     assign out_error_evaluator = error_evaluator;
 
     reg [7:0] mul_a [0:2];
@@ -212,39 +210,39 @@ module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
     integer k;
     always @(posedge rst) begin
         error_locator_done = 0;
-        i = 0;
-        j = 0;
-        auxillary_degree = 0;
+        i <= 0;
+        j <= 0;
+        auxillary_degree <= 0;
         delta = 1;
 
-        for (k = 0; k < MAX_CODE_LENGTH-1; k = k + 1) begin
-            error_locator[k][0] = 1;
+        for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
+            error_locator[0][k] = 1;
         end
-        for (k = 0; k < MAX_CODE_LENGTH-1; k = k + 1) begin
+        for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
             auxillary_polynomial[k] = 1;
         end
 
-        discrepency = syndrome[0];  //could be [1] too idk
+        discrepency <= syndrome[0];  //could be [1] too idk
     end
 
     always @(posedge clk) begin
         //calculating error locator polynomial
         if (j != code_length && error_locator_done == 0) begin
-            //error_locator[j][1] = error_locator[j][0] * delta + discrepency * auxillary_polynomial[j - 1];
-            //discrepency = discrepency + syndrome[i - j + 3]*error_locator[j - 1][1]
-            mul_a[0] <= error_locator[j][0];     mul_b[0] <= delta;
+            //error_locator[1][j] = error_locator[j][0] * delta + discrepency * auxillary_polynomial[j - 1];
+            //discrepency = discrepency + syndrome[i - j + 3]*error_locator[1][j - 1]
+            mul_a[0] <= error_locator[0][j];     mul_b[0] <= delta;
             mul_a[1] <= discrepency;             mul_b[1] <= auxillary_polynomial[j - 1];
-            mul_a[2] <= syndrome[i - j + 3];     mul_b[2] <= error_locator[j - 1][1];
+            mul_a[2] <= syndrome[i - j + 3];     mul_b[2] <= error_locator[1][j - 1];
 
-            error_locator[j][1] <= mul_c[0] ^ mul_c[1];
+            error_locator[1][j] <= mul_c[0] ^ mul_c[1];
             discrepency <= discrepency ^ mul_c[2];
 
             j <= j + 1;
         end
         //calculating error evaluator polynomial
         if (j != code_length && error_locator_done == 1) begin
-            //error_evaluator[j] = error_evaluator[j - 1] + syndrome[i - j] * error_locator[j][1];
-            mul_a[0] <= syndrome[i - j];     mul_b[0] <= error_locator[j][1];
+            //error_evaluator[j] = error_evaluator[j - 1] + syndrome[i - j] * error_locator[1][j];
+            mul_a[0] <= syndrome[i - j];     mul_b[0] <= error_locator[1][j];
             error_evaluator[j] <= error_evaluator[j - 1] ^ mul_c[0];
 
             j <= j + 1;
@@ -256,10 +254,10 @@ module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
             end
             else begin
                 auxillary_degree <= i + 1 - auxillary_degree;
-                delta <= discrepency;
+                delta = discrepency;
 
-                for (k = 0; k < MAX_CODE_LENGTH-1; k = k + 1) begin
-                    auxillary_polynomial[k] = error_locator[k][0];
+                for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
+                    auxillary_polynomial[k] = error_locator[0][k];
                 end
             end
         
@@ -267,7 +265,7 @@ module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
                 //error_locator[0] = delta * error_locator[0][0];
                 mul_a[0] = delta;   mul_b[0] = error_locator[0][0];
                 error_locator[1][0] = mul_c[0];
-                discrepency = 0;
+                discrepency <= 0;
             end
             else begin
                 //error_evaluator[0] = syndrome[i + 1] * error_locator[0][0];
@@ -276,24 +274,24 @@ module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
             end
 
             //integer k;
-            //for (k = 0; k < MAX_CODE_LENGTH-1; k = k + 1) begin
+            //for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
             //    error_locator[k][0] = error_locator[k][1];
             //end
-            error_locator[0:MAX_CODE_LENGTH-1][0] = error_locator[0:MAX_CODE_LENGTH-1][1];
-            //error_evaluator[0:MAX_CODE_LENGTH-1][0] = error_evaluator[0:MAX_CODE_LENGTH-1][1];
+            error_locator[0] = error_locator[1];//[0:MAX_ERRORS-1];
+            //error_evaluator[0][0:MAX_ERRORS-1] = error_evaluator[1][0:MAX_ERRORS-1];
 
             j <= 1;
             i <= i + 1;
         end
         if (i == code_length && error_locator_done == 0) begin
-            i = 0;
-            j = 0;
-            auxillary_degree = 0;
-            discrepency = syndrome[0];  //could be [1] too idk
-            for (k = 0; k < MAX_CODE_LENGTH-1; k = k + 1) begin
+            i <= 0;
+            j <= 0;
+            auxillary_degree <= 0;
+            discrepency <= syndrome[0];  //could be [1] too idk
+            for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
                 auxillary_polynomial[k] = 1;
             end
-            error_locator_done <= 1;
+            error_locator_done = 1;
         end
     end
 
@@ -302,12 +300,12 @@ module serial_berlekamp_massey #(parameter MAX_CODE_LENGTH = 32)
 endmodule
 
 //based off of https://doi.org/10.48550/arXiv.cs/0606035
-module fast_root_search #(parameter MAX_CODE_LENGTH = 32)
-                         (input clk, input rst, input [7:0] generator_polynomial, input [7:0] error_locator [0:MAX_CODE_LENGTH-1],
+module fast_root_search #(parameter MAX_ERRORS = 16)
+                         (input clk, input rst, input [7:0] generator_polynomial, input [7:0] error_locator [0:MAX_ERRORS-1],
                           input [6:0] reduction_matrix [0:7],
-                          output wire done, output reg [7:0] roots [0:MAX_CODE_LENGTH-1]);
-    localparam BITWIDTH = $clog2(MAX_CODE_LENGTH);
-    localparam INNER_DEGREE = (MAX_CODE_LENGTH - 4)%5 == 0 ? (MAX_CODE_LENGTH - 4)/5 : (MAX_CODE_LENGTH - 4)/5 + 1;
+                          output wire done, output reg [7:0] roots [0:MAX_ERRORS-1]);
+    localparam BITWIDTH = $clog2(MAX_ERRORS);
+    localparam INNER_DEGREE = (MAX_ERRORS*2 - 4)%5 == 0 ? (MAX_ERRORS*2 - 4)/5 : (MAX_ERRORS*2 - 4)/5 + 1;
 
     reg [7:0] L [0:7];
     reg L_ready;
@@ -342,15 +340,15 @@ module fast_root_search #(parameter MAX_CODE_LENGTH = 32)
     finite_field_multiplier_mastravito multiplier2(mul_a[2], mul_b[2], reduction_matrix, mul_c[2]);
 
     always @(posedge rst) begin
-        i = 0;
-        j = 0;
-        root_counter = 0;
+        i <= 0;
+        j <= 0;
+        root_counter <= 0;
         setup_done = 0;
-        polynomial_result = 0;
-        polynomial_started = 0;
-        alpha = generator_polynomial;
+        polynomial_result <= 0;
+        polynomial_started <= 0;
+        alpha <= generator_polynomial;
         //TODO: fix this later maybe
-        //inner_degree = (MAX_CODE_LENGTH - 4)/5;
+        //inner_degree = (MAX_ERRORS - 4)/5;
     end
 
     always @(posedge clk) begin
@@ -362,11 +360,11 @@ module fast_root_search #(parameter MAX_CODE_LENGTH = 32)
         if(setup_done == 0 && j == 4 && i != INNER_DEGREE) begin
             mul_a[0] <= alpha;   mul_b[0] <= generator_polynomial;
             alpha <= mul_c[0];
-            i = i + 1;
-            j = 0;
+            i <= i + 1;
+            j <= 0;
         end
         if(setup_done == 0 && j == 4 && i == INNER_DEGREE) begin
-            j = 1;
+            j <= 1;
             setup_done = 1;
         end
         if(setup_done == 1 && i == INNER_DEGREE && j != 256) begin
@@ -410,12 +408,12 @@ module fast_root_search #(parameter MAX_CODE_LENGTH = 32)
     end
 endmodule
 
-module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
-                         (input clk, input rst, input [7:0] first_root, input [7:0] roots[0:MAX_CODE_LENGTH-1],
-                          input [7:0] error_locator [0:MAX_CODE_LENGTH-1], input [7:0] error_evaluator [0:MAX_CODE_LENGTH-1],
+module forney_algorithm #(parameter MAX_ERRORS = 16)
+                         (input clk, input rst, input [7:0] first_root, input [7:0] roots[0:MAX_ERRORS-1],
+                          input [7:0] error_locator [0:MAX_ERRORS-1], input [7:0] error_evaluator [0:MAX_ERRORS-1],
                           input [6:0] reduction_matrix [0:7],
-                          output done, output wire [7:0] message [0:255]);
-    localparam BITWIDTH = $clog2(MAX_CODE_LENGTH);
+                          output done, input [7:0] message_data [0:255], output reg [7:0] corrected_data [0:255]);
+    localparam BITWIDTH = $clog2(MAX_ERRORS);
 
     reg ffi_rst [0:1];
     wire ffi_done [0:1];
@@ -442,16 +440,16 @@ module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
     //wire [7:0] evaluator_coeff;
     wire evaluator_done;
     wire [7:0] evaluator_result;
-    polynomial_evaluator #(MAX_CODE_LENGTH)
+    polynomial_evaluator #(MAX_ERRORS)
         evaluator_evaluator(clk, evaluator_rst, evaluator_x, error_evaluator, reduction_matrix, evaluator_done, evaluator_result);
 
-    reg [7:0] error_locator_derivative [0:MAX_CODE_LENGTH-1];
+    reg [7:0] error_locator_derivative [0:MAX_ERRORS-1];
     reg locator_rst;
     reg [7:0] locator_x;
     //wire [7:0] locator_coeff;
     wire locator_done;
     wire [7:0] locator_result;
-    polynomial_evaluator #(MAX_CODE_LENGTH)
+    polynomial_evaluator #(MAX_ERRORS)
         locator_evaluator(clk, locator_rst, locator_x, error_locator_derivative, reduction_matrix, locator_done, locator_result);
     
     reg [7:0] error_position [0:2];
@@ -462,10 +460,15 @@ module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
     reg derivative_done;
     reg prev_j_lsb;
     reg [BITWIDTH:0] j;
+    integer k;
     always @(posedge rst) begin
-        j = 0;
+        j <= 0;
         power_exponent = 1 - first_root;
         derivative_done = 0;
+
+        for (k = 0; k < 256; k = k + 1) begin
+            corrected_data[k] = message_data[k];
+        end
     end
 
     always @(posedge clk) begin
@@ -479,13 +482,13 @@ module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
         prev_j_lsb = j[0];
 
         //calculate derivative of error locator
-        if (derivative_done == 0 && j != MAX_CODE_LENGTH) begin
+        if (derivative_done == 0 && j != MAX_ERRORS) begin
             error_locator_derivative[j[BITWIDTH-1:0]] <= 0;
             j <= j + 1;
         end
-        if (derivative_done == 0 && j == MAX_CODE_LENGTH) begin
+        if (derivative_done == 0 && j == MAX_ERRORS) begin
             derivative_done = 1;
-            j = 0;
+            j <= 0;
         end
         if (derivative_done == 1 && j == 0) begin
             ffi_input[0] <= roots[0];
@@ -496,12 +499,12 @@ module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
 
             j <= j + 1;
         end
-        //correct the message
-        if (derivative_done == 1 && j != 0 && j != MAX_CODE_LENGTH) begin
+        //correct message data
+        if (derivative_done == 1 && j != 0 && j != MAX_ERRORS) begin
             if (prev_j_lsb != j[0]) begin
                 ffi_input[0] <= roots[j[BITWIDTH-1:0]];
                 power_input <= roots[j[BITWIDTH-1:0]];
-                ffi_rst <= 1;
+                ffi_rst[0] <= 1;
                 power_rst <= 1;
 
                 evaluator_x <= error_position[0];
@@ -517,7 +520,7 @@ module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
                 //correction = power_result * evaluator_result * ffi_result[1]
                 mul_a <= evaluator_result;  mul_b <= ffi_result[1];
                 mul_a <= mul_c;             mul_b <= to_the_power[2];
-                message[error_position[2]] <= mul_c;
+                corrected_data[error_position[2]] <= corrected_data[error_position[2]] ^ mul_c;
 
                 error_position[2] <= error_position[1];
                 error_position[1] <= error_position[0];
@@ -532,5 +535,5 @@ module forney_algorithm #(parameter MAX_CODE_LENGTH = 32)
             end
         end
     end
-    assign done = (derivative_done == 1 && j == MAX_CODE_LENGTH) ? 1 : 0;
+    assign done = (derivative_done == 1 && j == MAX_ERRORS) ? 1 : 0;
 endmodule
