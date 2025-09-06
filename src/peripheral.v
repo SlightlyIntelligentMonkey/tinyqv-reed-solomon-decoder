@@ -72,10 +72,10 @@ module tqvp_reed_solomon_decoder (
     wire root_search_done;
     wire forney_algorithm_done;
 
-    reg syndrome_rst;
-    reg berlekamp_massey_rst;
-    reg root_search_rst;
-    reg forney_algorithm_rst;
+    wire syndrome_rst;
+    wire berlekamp_massey_rst;
+    wire root_search_rst;
+    wire forney_algorithm_rst;
 
     wire [7:0] calculated_syndromes [0:MAX_ERRORS*2-1];
     serial_syndrome_calculator #(256, MAX_ERRORS)
@@ -138,21 +138,27 @@ module tqvp_reed_solomon_decoder (
         //    data_ready = 1;
         end
 
-        syndrome_rst <= 0;
-        berlekamp_massey_rst <= 0;
-        root_search_rst <= 0;
-        forney_algorithm_rst <= 0;
+        //syndrome_rst <= 0;
+        //berlekamp_massey_rst <= 0;
+        //root_search_rst <= 0;
+        //forney_algorithm_rst <= 0;
 
         //go to next pipeline stage
-        if (syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) begin
+        if (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) begin
             message_data[2] <= message_data[1];
             message_data[1] <= message_data[0];
             syndromes <= calculated_syndromes;
 
-            syndrome_rst <= 1;
-            berlekamp_massey_rst <= 1;
-            root_search_rst <= 1;
-            forney_algorithm_rst <= 1;
+            //syndrome_rst <= 1;
+            //berlekamp_massey_rst <= 1;
+            //root_search_rst <= 1;
+            //forney_algorithm_rst <= 1;
         end
     end
+
+    assign syndrome_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
+    assign berlekamp_massey_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
+    assign root_search_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
+    assign forney_algorithm_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
+    assign uo_out[0] = (syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
 endmodule

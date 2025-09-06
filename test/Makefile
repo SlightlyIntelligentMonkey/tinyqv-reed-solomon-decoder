@@ -3,7 +3,7 @@
 
 # defaults
 SIM ?= verilator
-COMPILE_ARGS ?= --timing -Wno-MULTIDRIVEN -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -CFLAGS "-std=c++20"
+COMPILE_ARGS ?= --timing --compiler gcc -Wno-MULTIDRIVEN -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = peripheral.v bch_reed_solomon.v

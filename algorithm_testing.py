@@ -146,10 +146,23 @@ def print_matrix(matrix):
         print(row)
     print('\n')
 
-print_matrix(aes_matrix)
-print_matrix(ccsds_matrix)
-print_matrix(calc_reduction_matrix(0b100101011))
-print_matrix(calc_reduction_matrix(0b101011111))
-print_matrix(calc_reduction_matrix(0b111110101))
+#print_matrix(aes_matrix)
+#print_matrix(ccsds_matrix)
+#print_matrix(calc_reduction_matrix(0b100101011))
+#print_matrix(calc_reduction_matrix(0b101011111))
+#print_matrix(calc_reduction_matrix(0b111110101))
 
 #print(gf_2_create_test_table(0b00000011, aes_matrix))
+
+test_string = """Hello world!
+This is an epic test.
+See my reed solomon decoder and rejoice!
+For it shall work first try and not take much effort to debug if it doesn't work first try.
+
+
+
+
+
+.-.. --- -. -.. --- -. -.-. .- .-.. .-.. .. -. --.��RT��D�OvG홟��8a�_U;>���-"""
+
+print(test_string)

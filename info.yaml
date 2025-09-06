@@ -30,8 +30,8 @@ project:
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: "Select input message data or configuration registers"
-  ui[1]: ""
+  ui[0]: "Address message data or configuration registers (0 to address message, 1 to address configuration registers)"
+  ui[1]: "Decoding controll (0 to pause, 1 to continue)"
   ui[2]: ""
   ui[3]: ""
   ui[4]: ""
@@ -40,7 +40,7 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: ""
+  uo[0]: "Decoding step completed"
   uo[1]: ""
   uo[2]: ""
   uo[3]: ""
