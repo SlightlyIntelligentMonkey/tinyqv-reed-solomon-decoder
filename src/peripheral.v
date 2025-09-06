@@ -37,7 +37,7 @@ module tqvp_reed_solomon_decoder (
 
     //calculate reduction matrix
     /* verilator lint_off UNOPTFLAT */
-    reg [6:0] reduction_matrix [7:0];
+    reg [6:0] reduction_matrix [0:7];
     generate
         genvar j;
         genvar i;
@@ -65,7 +65,7 @@ module tqvp_reed_solomon_decoder (
 
     //decode reed solomon code
     localparam MAX_ERRORS = 16;
-    reg [7:0] syndromes [0:MAX_ERRORS*2-1];
+    reg [7:0] syndromes [0:(MAX_ERRORS*2)-1];
 
     wire syndrome_done;
     wire berlekamp_massey_done;
@@ -77,9 +77,9 @@ module tqvp_reed_solomon_decoder (
     wire root_search_rst;
     wire forney_algorithm_rst;
 
-    wire [7:0] calculated_syndromes [0:MAX_ERRORS*2-1];
-    serial_syndrome_calculator #(256, MAX_ERRORS)
-        syndrome_calculator(clk, syndrome_rst, generator_polynomial, message_data[0], reduction_matrix,
+    wire [7:0] calculated_syndromes [0:(MAX_ERRORS*2)-1];
+    serial_syndrome_calculator #(MAX_ERRORS)
+        syndrome_calculator(clk, syndrome_rst, generator_polynomial, message_data[0],reduction_matrix,
         syndrome_done, calculated_syndromes);
 
     wire [7:0] berlekamp_massey_code_length;
@@ -113,19 +113,24 @@ module tqvp_reed_solomon_decoder (
         if (data_write_n != 'b11 && address == 0 && ui_in[0] == 1) begin
             block_length = data_in[7:0];
             code_length = block_length - message_length;
+            $display("Wrote to block_length: %d", block_length);
         end
         if (data_write_n != 'b11 && address == 1 && ui_in[0] == 1) begin
             message_length = data_in[7:0];
             code_length = block_length - message_length;
+            $display("Wrote to message_length: %d", message_length);
         end
         if (data_write_n != 'b11 && address == 2 && ui_in[0] == 1) begin
             generator_polynomial = data_in[7:0];
+            $display("Wrote to generator_polynomial: %d", generator_polynomial);
         end
         if (data_write_n == 'b01 && address == 3 && ui_in[0] == 1) begin
             irreducible_polynomial = data_in[8:0];
+            $display("Wrote to irreducible_polynomial: %d", irreducible_polynomial);
         end
         if (data_write_n != 'b11 && address == 4 && ui_in[0] == 1) begin
             first_root = data_in[7:0];
+            $display("Wrote to first_root: %d", first_root);
         end
 
         //if (data_read_n == 'b11)
@@ -156,9 +161,24 @@ module tqvp_reed_solomon_decoder (
         end
     end
 
-    assign syndrome_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
-    assign berlekamp_massey_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
-    assign root_search_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
-    assign forney_algorithm_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
-    assign uo_out[0] = (syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
+    always @(negedge rst_n) begin
+        $display("RESET!!!!");
+        block_length = 255;
+        message_length = 223;
+        code_length = 32;
+
+        first_root = 41;
+        generator_polynomial = 79;
+        irreducible_polynomial = 'b111110101;
+    end
+
+    assign syndrome_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ||rst_n == 0 ? 1 : 0;
+    assign berlekamp_massey_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) || rst_n == 0 ? 1 : 0;
+    assign root_search_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) || rst_n == 0 ? 1 : 0;
+    assign forney_algorithm_rst = (ui_in[1] == 1 && syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) || rst_n == 0 ? 1 : 0;
+    assign uo_out[0] = syndrome_done;
+    assign uo_out[1] = berlekamp_massey_done;
+    assign uo_out[2] = root_search_done;
+    assign uo_out[3] = forney_algorithm_done;
+    //assign user_interrupt = (syndrome_done == 1 && berlekamp_massey_done == 1 && root_search_done == 1 && forney_algorithm_done == 1) ? 1 : 0;
 endmodule

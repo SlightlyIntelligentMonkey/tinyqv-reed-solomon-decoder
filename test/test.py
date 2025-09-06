@@ -53,17 +53,20 @@ def split_word(word):
 
 #accepts array of 32 bit words, length is in bytes
 async def write_encoded_message(tqv, data, length):
+    tqv.dut._log.info("Began write\n")
     tqv.dut.ui_in = 0
     for i in range(0, math.floor(length/4)):
         tqv.write_word_reg(i, concat_bytes(data[4*i + 0], data[4*i + 1], data[4*i + 2], data[4*i + 3]))
 
 async def read_decoded_message(tqv, length):
+    tqv.dut._log.info("Began read\n")
     result = [0] * length
     for i in range(0, math.floor(length/4)):
         word = tqv.read_word_reg(i)
         result[4*i:4*i+4] = split_word(word)
 
 def set_rs_parameters(tqv, n, k, generator_polynomial, irreducible_polynomial, first_consecutive_root):
+    tqv.dut._log.info(f"Set n = {n}, k = {k}, g = {generator_polynomial}, q = {irreducible_polynomial}, fcr = {first_consecutive_root}\n")
     tqv.dut.ui_in = 1
     tqv.write_byte_reg(0, n)
     tqv.write_byte_reg(1, k)
@@ -103,20 +106,37 @@ async def test_project(dut):
 
     await write_encoded_message(tqv, msg_encoded, len(msg_encoded))
     #should probably be wfi or something
-    while(tqv.dut.uio_out == 0):
-        nop()
-    tqv.dut.uio_out == 1
+    loop_counter = 0
+    dut._log.info(loop_counter)
+    while(1):
+        await ClockCycles(tqv.dut.clk, 1000)
+        dut._log.info(tqv.dut.uo_out)
+        loop_counter = loop_counter + 1
+    dut._log.info(loop_counter)
+    tqv.dut.ui_in.value = 2
+    await ClockCycles(tqv.dut.clk, 2)
+    tqv.dut.ui_in.value = 0
 
-    while(tqv.dut.uio_out == 0):
-        nop()
-    tqv.dut.uio_out == 1
+    while(tqv.dut.uo_out.value == 0):
+        loop_counter = loop_counter + 1
+    dut._log.info(loop_counter)
+    tqv.dut.ui_in.value = 2
+    await ClockCycles(tqv.dut.clk, 2)
+    tqv.dut.ui_in.value = 0
 
-    while(tqv.dut.uio_out == 0):
-        nop()
-    tqv.dut.uio_out == 1
+    while(tqv.dut.uo_out.value == 0):
+        loop_counter = loop_counter + 1
+    dut._log.info(loop_counter)
+    tqv.dut.ui_in.value = 2
+    await ClockCycles(self.dut.clk, 2)
+    tqv.dut.ui_in.value = 0
 
-    while(tqv.dut.uio_out == 0):
-        nop()
-    tqv.dut.uio_out == 1
+    while(tqv.dut.uo_out.value == 0):
+        loop_counter = loop_counter + 1
+    dut._log.info(loop_counter)
+    tqv.dut.ui_in.value = 2
+    await ClockCycles(self.dut.clk, 2)
+    tqv.dut.ui_in.value = 0
+    #dut.interrupt 
 
     await print(read_decoded_message(tqv, 223))

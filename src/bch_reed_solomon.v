@@ -132,8 +132,8 @@ module polynomial_evaluator #(parameter DEGREE = 256)
     end
 endmodule
 
-module serial_syndrome_calculator #(parameter DEGREE = 256, parameter MAX_ERRORS = 16)
-                            (input clk, input rst, input [7:0] generator_polynomial, input [7:0] coeff [0:DEGREE-1],
+module serial_syndrome_calculator #(parameter MAX_ERRORS = 16)
+                            (input clk, input rst, input [7:0] generator_polynomial, input [7:0] coeff [0:255],
                              input [6:0] reduction_matrix [0:7],
                              output wire done, output reg [7:0] syndromes [0:(MAX_ERRORS*2)-1]);
     localparam COUNTERWIDTH = $clog2(2*MAX_ERRORS);
@@ -141,8 +141,7 @@ module serial_syndrome_calculator #(parameter DEGREE = 256, parameter MAX_ERRORS
     reg [7:0] evaluator_x;
     wire evaluator_done;
     wire [7:0] evaluator_result;
-    polynomial_evaluator #(DEGREE)
-        evaluator(clk, evaluator_rst, evaluator_x, coeff, reduction_matrix, evaluator_done, evaluator_result);
+    polynomial_evaluator evaluator(clk, evaluator_rst, evaluator_x, coeff, reduction_matrix, evaluator_done, evaluator_result);
 
     reg [7:0] mul_alpha;
     wire [7:0] mul_result;
