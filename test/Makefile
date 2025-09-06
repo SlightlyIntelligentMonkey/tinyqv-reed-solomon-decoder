@@ -6,7 +6,8 @@
 #COMPILE_ARGS ?= --timing --compiler gcc -Wno-MULTIDRIVEN -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = bch_reed_solomon.v peripheral.v
+PROJECT_SOURCES =	binary_exponentiation.v fast_root_search.v finite_field_inverter.v finite_field_multiplier_mastravito.v \
+					peripheral.v forney_algorithm.v polynomial_evaluator.v serial_berlekamp_massey.v  serial_syndrome_calculator.v
 ADDITIONAL_SOURCES = tt_wrapper.v test_harness/*.sv
 
 ifneq ($(GATES),yes)
