@@ -37,19 +37,19 @@ module tqvp_reed_solomon_decoder (
 
     //calculate reduction matrix
     /* verilator lint_off UNOPTFLAT */
-    reg [6:0] reduction_matrix [0:7];
+    reg [7*8:0] reduction_matrix;
     generate
         genvar j;
         genvar i;
         for (j = 0; j < 8; j = j + 1)
-            assign reduction_matrix[j][0] = irreducible_polynomial[j];
+            assign reduction_matrix[7*j] = irreducible_polynomial[j];
 
         for (j = 0; j < 8; j = j + 1) begin
             for (i = 1; i < 7; i = i + 1) begin
                 if (j - 1 >= 0)
-                    assign reduction_matrix[j][i] = reduction_matrix[j - 1][i - 1] ^ reduction_matrix[7][i - 1];
+                    assign reduction_matrix[7*j + i] = reduction_matrix[7*(j - 1) + i - 1] ^ reduction_matrix[7*7 + i - 1];
                 else
-                    assign reduction_matrix[j][i] = reduction_matrix[7][i - 1];
+                    assign reduction_matrix[7*j + i] = reduction_matrix[7*7 + i - 1];
             end
         end        
     endgenerate
@@ -59,13 +59,13 @@ module tqvp_reed_solomon_decoder (
     reg [7:0] accum;
 
     //32 bit words addressed with address range 0 - 63
-    reg [7:0] message_data [0:2][0:255];
-    wire [7:0] decoded_data [0:255];
-    wire [7:0] error_polynomial [0:255];
+    reg [8*256-1:0] message_data [0:2];
+    wire [8*256-1:0] decoded_data;
+    wire [8*256-1:0] error_polynomial;
 
     //decode reed solomon code
     localparam MAX_ERRORS = 16;
-    reg [7:0] syndromes [0:(MAX_ERRORS*2)-1];
+    reg [8*(MAX_ERRORS*2)-1:0] syndromes;
 
     wire syndrome_done;
     wire berlekamp_massey_done;
@@ -77,38 +77,35 @@ module tqvp_reed_solomon_decoder (
     wire root_search_rst;
     wire forney_algorithm_rst;
 
-    wire [7:0] calculated_syndromes [0:(MAX_ERRORS*2)-1];
+    wire [8*(MAX_ERRORS*2)-1:0] calculated_syndromes;
     serial_syndrome_calculator #(MAX_ERRORS)
         syndrome_calculator(clk, syndrome_rst, generator_polynomial, message_data[0],reduction_matrix,
         syndrome_done, calculated_syndromes);
 
     wire [7:0] berlekamp_massey_code_length;
-    wire [7:0] berlekamp_massey_error_locator [0:MAX_ERRORS-1];
-    wire [7:0] berlekamp_massey_error_evaluator [0:MAX_ERRORS-1];
+    reg [8*MAX_ERRORS-1:0] error_locator [0:2];
+    reg [8*MAX_ERRORS-1:0] error_evaluator [0:2];
     serial_berlekamp_massey #(MAX_ERRORS)
         berlekamp_massey(clk, berlekamp_massey_rst, berlekamp_massey_code_length, syndromes, reduction_matrix,
-                         berlekamp_massey_done, berlekamp_massey_error_locator, berlekamp_massey_error_evaluator);
+                         berlekamp_massey_done, error_locator[0], error_evaluator[0]);
     
-    wire [7:0] root_search_error_locator [0:MAX_ERRORS-1];
-    wire [7:0] root_search_roots [0:MAX_ERRORS-1];
+    wire [8*MAX_ERRORS-1:0] root_search_roots;
     fast_root_search #(MAX_ERRORS)
-        root_search(clk, root_search_rst, generator_polynomial, root_search_error_locator, reduction_matrix,
+        root_search(clk, root_search_rst, generator_polynomial, error_locator[1], reduction_matrix,
                     root_search_done, root_search_roots);
 
-    wire [7:0] forney_error_locator [0:MAX_ERRORS-1];
-    wire [7:0] forney_error_evaluator [0:MAX_ERRORS-1];
     forney_algorithm #(MAX_ERRORS)
-        forney(clk, forney_algorithm_rst, first_root, root_search_roots, forney_error_locator, forney_error_evaluator, reduction_matrix,
+        forney(clk, forney_algorithm_rst, first_root, root_search_roots, error_locator[2], error_evaluator[2], reduction_matrix,
                forney_algorithm_done, message_data[2], decoded_data);
 
     assign data_ready = (data_read_n == 'b10) ? 1 : 0;
     always @(posedge clk) begin
 
         if (data_write_n == 'b10 && ui_in[0] == 0) begin
-            message_data[0][(address << 2) + 0] = data_in[7:0];
-            message_data[0][(address << 2) + 1] = data_in[15:8];
-            message_data[0][(address << 2) + 2] = data_in[23:16];
-            message_data[0][(address << 2) + 3] = data_in[31:24];
+            message_data[0][8*((address << 2) + 1)-:8] = data_in[7:0];
+            message_data[0][8*((address << 2) + 2)-:8] = data_in[15:8];
+            message_data[0][8*((address << 2) + 3)-:8] = data_in[23:16];
+            message_data[0][8*((address << 2) + 4)-:8] = data_in[31:24];
         end
         if (data_write_n != 'b11 && address == 0 && ui_in[0] == 1) begin
             block_length = data_in[7:0];
@@ -136,10 +133,10 @@ module tqvp_reed_solomon_decoder (
         //if (data_read_n == 'b11)
         //    data_ready = 0;
         if(data_read_n == 'b10) begin
-            data_out[7:0]   = decoded_data[(address << 2) + 0];
-            data_out[15:8]  = decoded_data[(address << 2) + 1];
-            data_out[23:16] = decoded_data[(address << 2) + 2];
-            data_out[31:24] = decoded_data[(address << 2) + 3];
+            data_out[7:0]   = decoded_data[8*((address << 2) + 1)-:8];
+            data_out[15:8]  = decoded_data[8*((address << 2) + 2)-:8];
+            data_out[23:16] = decoded_data[8*((address << 2) + 3)-:8];
+            data_out[31:24] = decoded_data[8*((address << 2) + 4)-:8];
         //    data_ready = 1;
         end
 
@@ -153,6 +150,11 @@ module tqvp_reed_solomon_decoder (
             message_data[2] <= message_data[1];
             message_data[1] <= message_data[0];
             syndromes <= calculated_syndromes;
+
+            error_locator[2] <= error_locator[1];
+            error_locator[1] <= error_locator[0];
+            error_evaluator[2] <= error_evaluator[1];
+            error_evaluator[1] <= error_evaluator[0];
 
             //syndrome_rst <= 1;
             //berlekamp_massey_rst <= 1;
