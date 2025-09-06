@@ -2,11 +2,11 @@
 # See https://docs.cocotb.org/en/stable/quickstart.html for more info
 
 # defaults
-SIM ?= verilator
-COMPILE_ARGS ?= --timing --compiler gcc -Wno-MULTIDRIVEN -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC
+#SIM ?= verilator
+#COMPILE_ARGS ?= --timing --compiler gcc -Wno-MULTIDRIVEN -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = peripheral.v bch_reed_solomon.v
+PROJECT_SOURCES = bch_reed_solomon.v peripheral.v
 ADDITIONAL_SOURCES = tt_wrapper.v test_harness/*.sv
 
 ifneq ($(GATES),yes)
