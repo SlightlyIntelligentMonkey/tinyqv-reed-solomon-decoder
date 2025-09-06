@@ -1,9 +1,9 @@
 # Tiny Tapeout project information
 project:
-  title:        ""      # Project title
-  author:       ""      # Your name
-  discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  ""      # One line description of what your project does
+  title:        "Reed-Solomon Decoder"      # Project title
+  author:       "Dawson Hubbard"      # Your name
+  discord:      "SlightlyIntelligentMonkey"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
+  description:  "Decodes stuff that's been encoded with Reed-Solomon encoders."      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
   clock_hz:     64000000  # Clock frequency in Hz (or 0 if not applicable)
 
