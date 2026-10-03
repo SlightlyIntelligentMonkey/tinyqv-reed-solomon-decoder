@@ -104,11 +104,12 @@ async def test_project(dut):
     #ccsds 0x187
     set_rs_parameters(tqv, n = 255, k = 223, generator_polynomial = 0xE8, irreducible_polynomial = 0b110000111, first_consecutive_root = 0x79)
 
+    print(f"Encoded message: {msg_encoded}")
     await write_encoded_message(tqv, msg_encoded, len(msg_encoded))
     #should probably be wfi or something
     loop_counter = 0
     dut._log.info(loop_counter)
-    while(1):
+    while(tqv.dut.uo_out.value == 0):
         await ClockCycles(tqv.dut.clk, 1000)
         dut._log.info(tqv.dut.uo_out)
         loop_counter = loop_counter + 1
@@ -117,26 +118,5 @@ async def test_project(dut):
     await ClockCycles(tqv.dut.clk, 2)
     tqv.dut.ui_in.value = 0
 
-    while(tqv.dut.uo_out.value == 0):
-        loop_counter = loop_counter + 1
-    dut._log.info(loop_counter)
-    tqv.dut.ui_in.value = 2
-    await ClockCycles(tqv.dut.clk, 2)
-    tqv.dut.ui_in.value = 0
-
-    while(tqv.dut.uo_out.value == 0):
-        loop_counter = loop_counter + 1
-    dut._log.info(loop_counter)
-    tqv.dut.ui_in.value = 2
-    await ClockCycles(self.dut.clk, 2)
-    tqv.dut.ui_in.value = 0
-
-    while(tqv.dut.uo_out.value == 0):
-        loop_counter = loop_counter + 1
-    dut._log.info(loop_counter)
-    tqv.dut.ui_in.value = 2
-    await ClockCycles(self.dut.clk, 2)
-    tqv.dut.ui_in.value = 0
-    #dut.interrupt 
-
-    await print(read_decoded_message(tqv, 223))
+    decoded_message = await read_decoded_message(tqv, 223)
+    await print(f"Decoded message: {decoded_message}")
