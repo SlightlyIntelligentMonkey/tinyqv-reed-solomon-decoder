@@ -5,6 +5,7 @@
 
 `default_nettype none
 
+`define RS_MAX_ERRORS 16
 module tqvp_reed_solomon_decoder (
     input         clk,          // Clock - the TinyQV project clock is normally set to 64MHz.
     input         rst_n,        // Reset_n - low to reset.
@@ -50,8 +51,8 @@ module tqvp_reed_solomon_decoder (
     wire [8*256-1:0] error_polynomial;
 
     //decode reed solomon code
-    localparam MAX_ERRORS = 16;
-    reg [8*(MAX_ERRORS*2)-1:0] syndromes;
+    //localparam RS_MAX_ERRORS = 16;
+    reg [8*(RS_MAX_ERRORS*2)-1:0] syndromes;
 
     wire syndrome_done;
     wire berlekamp_massey_done;
@@ -63,25 +64,24 @@ module tqvp_reed_solomon_decoder (
     wire root_search_rst;
     wire forney_algorithm_rst;
 
-    wire [8*(MAX_ERRORS*2)-1:0] calculated_syndromes;
-    serial_syndrome_calculator #(MAX_ERRORS)
+    wire [8*(RS_MAX_ERRORS*2)-1:0] calculated_syndromes;
+    serial_syndrome_calculator #(RS_MAX_ERRORS)
         syndrome_calculator(clk, syndrome_rst, generator_polynomial, message_data[0],reduction_matrix,
         syndrome_done, calculated_syndromes);
 
-    wire [$clog2(2*MAX_ERRORS)-1:0] berlekamp_massey_code_length;
-    localparam ERR_WIDTH = 8*MAX_ERRORS-1;
-    reg [ERR_WIDTH:0] error_locator [0:2];
-    reg [ERR_WIDTH:0] error_evaluator [0:2];
-    serial_berlekamp_massey #(MAX_ERRORS)
+    wire [$clog2(2*RS_MAX_ERRORS)-1:0] berlekamp_massey_code_length;
+    reg [8*RS_MAX_ERRORS-1:0] error_locator [0:2];
+    reg [8*RS_MAX_ERRORS-1:0] error_evaluator [0:2];
+    serial_berlekamp_massey #(RS_MAX_ERRORS)
         berlekamp_massey(clk, berlekamp_massey_rst, berlekamp_massey_code_length, syndromes, reduction_matrix,
                          berlekamp_massey_done, error_locator[0], error_evaluator[0]);
     
-    wire [ERR_WIDTH:0] root_search_roots;
-    fast_root_search #(MAX_ERRORS)
+    wire [8*RS_MAX_ERRORS-1:0] root_search_roots;
+    fast_root_search #(RS_MAX_ERRORS)
         root_search(clk, root_search_rst, generator_polynomial, error_locator[1], reduction_matrix,
                     root_search_done, root_search_roots);
 
-    forney_algorithm #(MAX_ERRORS)
+    forney_algorithm #(RS_MAX_ERRORS)
         forney(clk, forney_algorithm_rst, first_root, root_search_roots, error_locator[2], error_evaluator[2], reduction_matrix,
                forney_algorithm_done, message_data[2], decoded_data);
 
