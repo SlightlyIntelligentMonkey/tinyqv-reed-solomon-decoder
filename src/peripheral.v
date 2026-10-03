@@ -69,13 +69,14 @@ module tqvp_reed_solomon_decoder (
         syndrome_done, calculated_syndromes);
 
     wire [$clog2(2*MAX_ERRORS)-1:0] berlekamp_massey_code_length;
-    reg [8*MAX_ERRORS-1:0] error_locator [0:2];
-    reg [8*MAX_ERRORS-1:0] error_evaluator [0:2];
+    localparam ERR_WIDTH = 8*MAX_ERRORS-1;
+    reg [ERR_WIDTH:0] error_locator [0:2];
+    reg [ERR_WIDTH:0] error_evaluator [0:2];
     serial_berlekamp_massey #(MAX_ERRORS)
         berlekamp_massey(clk, berlekamp_massey_rst, berlekamp_massey_code_length, syndromes, reduction_matrix,
                          berlekamp_massey_done, error_locator[0], error_evaluator[0]);
     
-    wire [8*MAX_ERRORS-1:0] root_search_roots;
+    wire [ERR_WIDTH:0] root_search_roots;
     fast_root_search #(MAX_ERRORS)
         root_search(clk, root_search_rst, generator_polynomial, error_locator[1], reduction_matrix,
                     root_search_done, root_search_roots);
@@ -89,6 +90,7 @@ module tqvp_reed_solomon_decoder (
     assign data_out[15:8]  = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 2)-:8] : 0;
     assign data_out[23:16] = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 3)-:8] : 0;
     assign data_out[31:24] = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 4)-:8] : 0;
+
     always @(posedge clk) begin
 
         if (data_write_n == 'b10 && ui_in[0] == 0) begin
@@ -131,10 +133,10 @@ module tqvp_reed_solomon_decoder (
             message_data[1] <= message_data[0];
             syndromes <= calculated_syndromes;
 
-            error_locator[2][8*MAX_ERRORS-1:0] <= error_locator[1][8*MAX_ERRORS-1:0];
-            error_locator[1][8*MAX_ERRORS-1:0] <= error_locator[0][8*MAX_ERRORS-1:0];
-            error_evaluator[2][8*MAX_ERRORS-1:0] <= error_evaluator[1][8*MAX_ERRORS-1:0];
-            error_evaluator[1] [8*MAX_ERRORS-1:0]<= error_evaluator[0][8*MAX_ERRORS-1:0];
+            error_locator[2] <= error_locator[1];
+            error_locator[1] <= error_locator[0];
+            error_evaluator[2] <= error_evaluator[1];
+            error_evaluator[1] <= error_evaluator[0];
 
             //syndrome_rst <= 1;
             //berlekamp_massey_rst <= 1;
