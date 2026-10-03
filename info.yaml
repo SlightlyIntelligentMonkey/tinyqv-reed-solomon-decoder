@@ -17,6 +17,15 @@ project:
   # Source files must be in ./src and you must list each source file separately, one per line.
   # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
+    - "binary_exponentiation.v"
+    - "fast_root_search.v"
+    - "finite_field_inverter.v"
+    - "finite_field_multiplier_mastravito.v"
+    - "forney_algorithm.v"
+    - "mastravito_reduction_matrix.v"
+    - "polynomial_evaluator.v"
+    - "serial_berlekamp_massey.v"
+    - "serial_syndrome_calculator.v"
     - "peripheral.v"
     - "tt_wrapper.v"
     - "test_harness/falling_edge_detector.sv"
