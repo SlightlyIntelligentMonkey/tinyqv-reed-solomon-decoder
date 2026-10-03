@@ -69,20 +69,20 @@ module tqvp_reed_solomon_decoder (
         syndrome_done, calculated_syndromes);
 
     wire [$clog2(2*MAX_ERRORS)-1:0] berlekamp_massey_code_length;
-    reg [3*(8*MAX_ERRORS-1):0] error_locator;
-    reg [3*(8*MAX_ERRORS-1):0] error_evaluator;
+    reg [3*8*MAX_ERRORS-1:0] error_locator;
+    reg [3*8*MAX_ERRORS-1:0] error_evaluator;
     serial_berlekamp_massey #(MAX_ERRORS)
         berlekamp_massey(clk, berlekamp_massey_rst, berlekamp_massey_code_length, syndromes, reduction_matrix, berlekamp_massey_done,
-                         error_locator[1*(8*MAX_ERRORS-1):0*(8*MAX_ERRORS-1)], error_evaluator[1*(8*MAX_ERRORS-1):0*(8*MAX_ERRORS-1)]);
+                         error_locator[1*8*MAX_ERRORS-1:0*8*MAX_ERRORS], error_evaluator[1*8*MAX_ERRORS-1:0*8*MAX_ERRORS]);
     
     wire [8*MAX_ERRORS-1:0] root_search_roots;
     fast_root_search #(MAX_ERRORS)
-        root_search(clk, root_search_rst, generator_polynomial, error_locator[2*(8*MAX_ERRORS-1):1*(8*MAX_ERRORS-1)], reduction_matrix,
+        root_search(clk, root_search_rst, generator_polynomial, error_locator[2*8*MAX_ERRORS-1:1*8*MAX_ERRORS], reduction_matrix,
                     root_search_done, root_search_roots);
 
     forney_algorithm #(MAX_ERRORS)
         forney(clk, forney_algorithm_rst, first_root, root_search_roots,
-               error_locator[3*(8*MAX_ERRORS-1):2*(8*MAX_ERRORS-1)], error_evaluator[3*(8*MAX_ERRORS-1):2*(8*MAX_ERRORS-1)],
+               error_locator[3*8*MAX_ERRORS-1:2*8*MAX_ERRORS], error_evaluator[3*8*MAX_ERRORS-1:2*8*MAX_ERRORS],
                reduction_matrix, forney_algorithm_done, message_data[2], decoded_data);
 
     assign data_ready = (data_read_n == 'b10) ? 1 : 0;
@@ -133,10 +133,10 @@ module tqvp_reed_solomon_decoder (
             message_data[1] <= message_data[0];
             syndromes <= calculated_syndromes;
 
-            error_locator[3*(8*MAX_ERRORS-1):2*(8*MAX_ERRORS-1)] = error_locator[2*(8*MAX_ERRORS-1):1*(8*MAX_ERRORS-1)];
-            error_locator[2*(8*MAX_ERRORS-1):1*(8*MAX_ERRORS-1)] = error_locator[1*(8*MAX_ERRORS-1):0*(8*MAX_ERRORS-1)];
-            error_evaluator[3*(8*MAX_ERRORS-1):2*(8*MAX_ERRORS-1)] = error_evaluator[2*(8*MAX_ERRORS-1):1*(8*MAX_ERRORS-1)];
-            error_evaluator[2*(8*MAX_ERRORS-1):1*(8*MAX_ERRORS-1)] = error_evaluator[1*(8*MAX_ERRORS-1):0*(8*MAX_ERRORS-1)];
+            error_locator[3*8*MAX_ERRORS-1:2*8*MAX_ERRORS] = error_locator[2*8*MAX_ERRORS-1:1*8*MAX_ERRORS];
+            error_locator[2*8*MAX_ERRORS-1:1*8*MAX_ERRORS] = error_locator[1*8*MAX_ERRORS-1:0*8*MAX_ERRORS];
+            error_evaluator[3*8*MAX_ERRORS-1:2*8*MAX_ERRORS] = error_evaluator[2*8*MAX_ERRORS-1:1*8*MAX_ERRORS];
+            error_evaluator[2*8*MAX_ERRORS-1:1*8*MAX_ERRORS] = error_evaluator[1*8*MAX_ERRORS-1:0*8*MAX_ERRORS];
 
             //syndrome_rst <= 1;
             //berlekamp_massey_rst <= 1;
