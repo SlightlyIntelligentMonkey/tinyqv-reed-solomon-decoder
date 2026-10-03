@@ -37,22 +37,8 @@ module tqvp_reed_solomon_decoder (
 
     //calculate reduction matrix
     /* verilator lint_off UNOPTFLAT */
-    reg [7*8:0] reduction_matrix;
-    generate
-        genvar j;
-        genvar i;
-        for (j = 0; j < 8; j = j + 1)
-            assign reduction_matrix[7*j] = irreducible_polynomial[j];
-
-        for (j = 0; j < 8; j = j + 1) begin
-            for (i = 1; i < 7; i = i + 1) begin
-                if (j - 1 >= 0)
-                    assign reduction_matrix[7*j + i] = reduction_matrix[7*(j - 1) + i - 1] ^ reduction_matrix[7*7 + i - 1];
-                else
-                    assign reduction_matrix[7*j + i] = reduction_matrix[7*7 + i - 1];
-            end
-        end        
-    endgenerate
+    wire [7*8:0] reduction_matrix;
+    mastravito_reduction_matrix mastravito_reduction_matrix_calculator(irreducible_polynomial, reduction_matrix);
     /* verilator lint_on UNOPTFLAT */
 
 
@@ -99,6 +85,10 @@ module tqvp_reed_solomon_decoder (
                forney_algorithm_done, message_data[2], decoded_data);
 
     assign data_ready = (data_read_n == 'b10) ? 1 : 0;
+    assign data_out[7:0]   = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 1)-:8] : 0;
+    assign data_out[15:8]  = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 2)-:8] : 0;
+    assign data_out[23:16] = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 3)-:8] : 0;
+    assign data_out[31:24] = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 4)-:8] : 0;
     always @(posedge clk) begin
 
         if (data_write_n == 'b10 && ui_in[0] == 0) begin
@@ -128,16 +118,6 @@ module tqvp_reed_solomon_decoder (
         if (data_write_n != 'b11 && address == 4 && ui_in[0] == 1) begin
             first_root = data_in[7:0];
             $display("Wrote to first_root: %d", first_root);
-        end
-
-        //if (data_read_n == 'b11)
-        //    data_ready = 0;
-        if(data_read_n == 'b10) begin
-            data_out[7:0]   = decoded_data[8*((address << 2) + 1)-:8];
-            data_out[15:8]  = decoded_data[8*((address << 2) + 2)-:8];
-            data_out[23:16] = decoded_data[8*((address << 2) + 3)-:8];
-            data_out[31:24] = decoded_data[8*((address << 2) + 4)-:8];
-        //    data_ready = 1;
         end
 
         //syndrome_rst <= 0;

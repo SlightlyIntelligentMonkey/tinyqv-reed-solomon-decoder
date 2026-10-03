@@ -115,11 +115,10 @@ module serial_berlekamp_massey #(parameter MAX_ERRORS = 16)
                 error_evaluator[0] <= mul_c[1];
             end
 
-            //integer k;
-            //for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
-            //    error_locator[k][0] = error_locator[k][1];
-            //end
-            error_locator[0] = error_locator[1];//[0:MAX_ERRORS-1];
+            for (k = 0; k < MAX_ERRORS-1; k = k + 1) begin
+                error_locator[0][k] = error_locator[1][k];
+            end
+            //error_locator[0] = error_locator[1];//[0:MAX_ERRORS-1];
             //error_evaluator[0][0:MAX_ERRORS-1] = error_evaluator[1][0:MAX_ERRORS-1];
 
             j <= 1;
