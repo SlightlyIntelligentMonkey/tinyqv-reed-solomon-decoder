@@ -68,7 +68,7 @@ module tqvp_reed_solomon_decoder (
         syndrome_calculator(clk, syndrome_rst, generator_polynomial, message_data[0],reduction_matrix,
         syndrome_done, calculated_syndromes);
 
-    wire [7:0] berlekamp_massey_code_length;
+    wire [$clog2(2*MAX_ERRORS)-1:0] berlekamp_massey_code_length;
     reg [8*MAX_ERRORS-1:0] error_locator [0:2];
     reg [8*MAX_ERRORS-1:0] error_evaluator [0:2];
     serial_berlekamp_massey #(MAX_ERRORS)
@@ -131,10 +131,10 @@ module tqvp_reed_solomon_decoder (
             message_data[1] <= message_data[0];
             syndromes <= calculated_syndromes;
 
-            error_locator[2] <= error_locator[1];
-            error_locator[1] <= error_locator[0];
-            error_evaluator[2] <= error_evaluator[1];
-            error_evaluator[1] <= error_evaluator[0];
+            error_locator[2][8*MAX_ERRORS-1:0] <= error_locator[1][8*MAX_ERRORS-1:0];
+            error_locator[1][8*MAX_ERRORS-1:0] <= error_locator[0][8*MAX_ERRORS-1:0];
+            error_evaluator[2][8*MAX_ERRORS-1:0] <= error_evaluator[1][8*MAX_ERRORS-1:0];
+            error_evaluator[1] [8*MAX_ERRORS-1:0]<= error_evaluator[0][8*MAX_ERRORS-1:0];
 
             //syndrome_rst <= 1;
             //berlekamp_massey_rst <= 1;

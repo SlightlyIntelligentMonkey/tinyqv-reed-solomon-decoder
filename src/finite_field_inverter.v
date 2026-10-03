@@ -7,5 +7,5 @@
 module finite_field_inverter (input clk, input rst, input [7:0] element, input [7*8:0] reduction_matrix,
                               output data_ready, output reg [7:0] inverse);
 
-    binary_exponentiation power(clk, rst, element, 254, reduction_matrix, data_ready, inverse);
+    binary_exponentiation power(clk, rst, element, 8'd254, reduction_matrix, data_ready, inverse);
 endmodule

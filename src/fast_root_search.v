@@ -7,7 +7,7 @@
 module fast_root_search #(parameter MAX_ERRORS = 16)
                          (input clk, input rst, input [7:0] generator_polynomial, input [8*MAX_ERRORS-1:0] error_locator_flat,
                           input [7*8:0] reduction_matrix,
-                          output wire done, output reg [8*MAX_ERRORS:0] roots);
+                          output wire done, output reg [8*MAX_ERRORS-1:0] roots);
     wire [7:0] error_locator [0:MAX_ERRORS-1];
     generate
         for (genvar j = 0; j < MAX_ERRORS-1; j = j + 1) begin : flatten_error_locator
