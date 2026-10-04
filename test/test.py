@@ -54,7 +54,7 @@ def split_word(word):
 #accepts array of 32 bit words, length is in bytes
 async def write_encoded_message(tqv, data, length):
     tqv.dut._log.info("Began write\n")
-    tqv.dut.ui_in = 0
+    tqv.dut.ui_in[0] = 0
     for i in range(0, math.floor(length/4)):
         tqv.write_word_reg(i, concat_bytes(data[4*i + 0], data[4*i + 1], data[4*i + 2], data[4*i + 3]))
 
@@ -106,6 +106,7 @@ async def test_project(dut):
 
     print(f"Encoded message: {msg_encoded}")
     await write_encoded_message(tqv, msg_encoded, len(msg_encoded))
+    tqv.dut.ui_in[1] = 1
     #should probably be wfi or something
     loop_counter = 0
     dut._log.info(loop_counter)
