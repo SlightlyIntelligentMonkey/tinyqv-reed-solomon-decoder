@@ -86,10 +86,7 @@ module tqvp_reed_solomon_decoder (
                reduction_matrix, forney_algorithm_done, message_data[2], decoded_data);
 
     assign data_ready = (data_read_n == 'b10) ? 1 : 0;
-    assign data_out[7:0]   = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 1)-:8] : 0;
-    assign data_out[15:8]  = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 2)-:8] : 0;
-    assign data_out[23:16] = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 3)-:8] : 0;
-    assign data_out[31:24] = (data_read_n == 'b10) ? decoded_data[8*((address << 2) + 4)-:8] : 0;
+    assign data_out = (data_read_n == 'b10) ? (decoded_data[(address * 32)+:32]) : 0;
 
     always @(posedge clk) begin
 
