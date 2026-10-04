@@ -99,25 +99,25 @@ module tqvp_reed_solomon_decoder (
             message_data[0][8*((address << 2) + 3)-:8] = data_in[23:16];
             message_data[0][8*((address << 2) + 4)-:8] = data_in[31:24];
         end
-        if (data_write_n != 'b11 && address == 0 && ui_in[0] == 1) begin
+        if (data_write_n != 'b00 && ui_in[0] == 1 && address == 0) begin
             block_length = data_in[7:0];
             code_length = block_length - message_length;
             $display("Wrote to block_length: %d", block_length);
         end
-        if (data_write_n != 'b11 && address == 1 && ui_in[0] == 1) begin
+        if (data_write_n != 'b00 && ui_in[0] == 1 && address == 1) begin
             message_length = data_in[7:0];
             code_length = block_length - message_length;
             $display("Wrote to message_length: %d", message_length);
         end
-        if (data_write_n != 'b11 && address == 2 && ui_in[0] == 1) begin
+        if (data_write_n != 'b00 && ui_in[0] == 1 && address == 2) begin
             generator_polynomial = data_in[7:0];
             $display("Wrote to generator_polynomial: %d", generator_polynomial);
         end
-        if (data_write_n == 'b01 && address == 3 && ui_in[0] == 1) begin
+        if (data_write_n == 'b01 && ui_in[0] == 1 && address == 3) begin
             irreducible_polynomial = data_in[8:0];
             $display("Wrote to irreducible_polynomial: %d", irreducible_polynomial);
         end
-        if (data_write_n != 'b11 && address == 4 && ui_in[0] == 1) begin
+        if (data_write_n != 'b00 && ui_in[0] == 1 && address == 4) begin
             first_root = data_in[7:0];
             $display("Wrote to first_root: %d", first_root);
         end

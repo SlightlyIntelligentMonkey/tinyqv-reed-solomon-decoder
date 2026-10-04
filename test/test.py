@@ -62,7 +62,7 @@ async def read_decoded_message(tqv, length):
     tqv.dut._log.info("Began read\n")
     result = [0] * length
     for i in range(0, math.floor(length/4)):
-        word = tqv.read_word_reg(i)
+        word = await tqv.read_word_reg(i)
         result[4*i:4*i+4] = split_word(word)
 
 def set_rs_parameters(tqv, n, k, generator_polynomial, irreducible_polynomial, first_consecutive_root):
@@ -92,7 +92,7 @@ async def test_project(dut):
     # Reset
     await tqv.reset()
 
-    dut._log.info("Test project behavior")
+    dut._log.info("Reed Solomon Decode Test")
 
     #primitive polynomial: ccsds 0b110000111
     #primitive polynomials: 0b100101011 0b101011111 0b111110101
